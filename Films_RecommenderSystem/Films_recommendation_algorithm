@@ -1,0 +1,3 @@
+The goal of this example is to construct a movie recommendation algorithm based on the evaluation data
+of existing users and output movies that may be of interest to specific users.
+The main steps are:
