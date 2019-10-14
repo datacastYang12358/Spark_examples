@@ -60,7 +60,7 @@ val ratingsDF = ratingsData.toDF()
 moviesDF.registerTempTable("movies")
 usersDF.registerTempTable("users")
 ratingsDF.registerTempTable("ratings")
-//
+
 val highRatingMoives = sqlContext.sql("SELECT ratings.user, ratings.product, ratings.rating, movies.title 
 FROM ratings JOIN movies ON movies.movieId=ratings.product  
 WHERE ratings.user=1680 and ratings.rating > 4.5 ORDER BY ratings.rating DESC ")
@@ -68,3 +68,8 @@ WHERE ratings.user=1680 and ratings.rating > 4.5 ORDER BY ratings.rating DESC ")
 highRatingMoives.show()
 -divide dataset into training set and testing set
 val tempPartitions = ratingsData.randomSplit(Array(0.7, 0.3), 1024L)
+val MAE = finalResultForComparison.map {
+  case ((user, product), (ratingOfTest, ratingOfPrediction)) =>
+    val error = (ratingOfTest - ratingOfPrediction)
+    Math.abs(error)
+}.mean()
