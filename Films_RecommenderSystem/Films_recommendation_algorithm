@@ -17,5 +17,6 @@ First, we download and extract the required dataset files
 su -l hadoop
 wget http://labfile.oss.aliyuncs.com/courses/600/ml-1m.zip
 unzip ml-1m.zip
-we put files in the "/ home / Hadoop" directory
-
+we put files in the "/home/Hadoop" directory
+Then we start Spark:
+spark-shell
