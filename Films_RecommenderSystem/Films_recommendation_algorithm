@@ -1,11 +1,10 @@
-The goal of this example is to construct a movie recommendation algorithm based on the evaluation data
-of existing users and output movies that may be of interest to specific users.
-The main steps are:
-Step 1.Load the dataset and parse it into a specific format according to the rules.
-Step 2.The parsed data are divided into two parts, which are the training set and the test set of the 
-model.
-Step 3.Use alternating Least Squares (ALS) algorithm to train the matrix model between users and movies.
-Step 4.The training set is used to predict and the test set is used to verify the validity of the 
+-The goal of this example is to construct a movie recommendation algorithm based on the evaluation data
+-of existing users and output movies that may be of interest to specific users.
+-The main steps are:
+-Step 1.Load the dataset and parse it into a specific format according to the rules.
+-Step 2.The parsed data are divided into two parts, which are the training set and the test set of the model.
+-Step 3.Use alternating Least Squares (ALS) algorithm to train the matrix model between users and movies.
+-Step 4.The training set is used to predict and the test set is used to verify the validity of the 
 prediction results.
 User-based CF: User-based collaborative filtering is used to evaluate the similarity between users 
 by the scores of different users on item, and make recommendations based on the similarity between users.
@@ -13,10 +12,59 @@ by the scores of different users on item, and make recommendations based on the 
 On GroupLens'website, you can find a dataset called MoiveLens. And here is the content of labels:
 http://files.grouplens.org/datasets/movielens/ml-1m-README.txt
 
-First, we download and extract the required dataset files
+
+-First, we download and extract the required dataset files
 su -l hadoop
 wget http://labfile.oss.aliyuncs.com/courses/600/ml-1m.zip
 unzip ml-1m.zip
-we put files in the "/home/Hadoop" directory
-Then we start Spark:
+-we put files in the "/home/Hadoop" directory
+-Then we start Spark:
 spark-shell
+-Spark Shell automatically creates a Spark Context object for you during startup, named sc.
+val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+import sqlContext.implicits._
+import org.apache.spark.rdd._
+import org.apache.spark.sql._
+import org.apache.spark.mllib.recommendation.Rating
+import org.apache.spark.mllib.recommendation.ALS
+import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
+-we create a Case Class for the movie/user data, which corresponds to same fields in dataset file.
+case class Movie(movieId: Int, title: String)
+case class User(userId: Int, gender: String, age: Int, occupation: Int, zipCode: String)
+-parsedFunction
+def parseMovieData(data: String): Movie = {
+  val dataFild = data.split("::")
+  assert(dataFild.size == 3)
+  Movie(dataFild(0).toInt, dataFild(1))
+}
+def parseUserData(data: String): User = {
+  val dataField = data.split("::")
+  assert(dataField.size == 5)
+  User(dataField(0).toInt, dataField(1).toString, dataField(2).toInt, dataField(3).toInt, dataField(4).toString)
+}
+def parseRatingData(data: String): Rating = {
+  val dataField = data.split("::")
+  Rating(dataField(0).toInt, dataField(1).toInt, dataField(2).toDouble)
+}
+-load data into RDD
+val moviesData = sc.textFile("/home/hadoop/ml-1m/movies.dat").map(parseMovieData).cache()
+val usersData = sc.textFile("/home/hadoop/ml-1m/users.dat").map(parseUserData).cache()
+val ratingsData = sc.textFile("/home/hadoop/ml-1m/ratings.dat").map(parseRatingData).cache()
+-the number of ratings and users
+val amountOfRatings = ratingsData.count()
+val amountOfUsers = ratingsData.map(_.user).distinct().count()
+-transform RDD into DataFrame
+val moviesDF = moviesData.toDF()
+val usersDF = usersData.toDF()
+val ratingsDF = ratingsData.toDF()
+moviesDF.registerTempTable("movies")
+usersDF.registerTempTable("users")
+ratingsDF.registerTempTable("ratings")
+//
+val highRatingMoives = sqlContext.sql("SELECT ratings.user, ratings.product, ratings.rating, movies.title 
+FROM ratings JOIN movies ON movies.movieId=ratings.product  
+WHERE ratings.user=1680 and ratings.rating > 4.5 ORDER BY ratings.rating DESC ")
+-show 20 first rows
+highRatingMoives.show()
+-divide dataset into training set and testing set
+val tempPartitions = ratingsData.randomSplit(Array(0.7, 0.3), 1024L)
